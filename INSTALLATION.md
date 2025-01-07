@@ -20,7 +20,7 @@
    If you want to change env vars, edit the .env file. Compare it with docker-compose.yml to make sure all env vars was match.
 4. Start services by running the following command:
 ```
-./vendor/bin/sail up -d
+./vendor/bin/sail up -d --build
 ```
 5. After services were built, generate the key for the app by command:
 ```
@@ -29,4 +29,9 @@
 6. Migration the database by command:
 ```
 ./vendor/bin/sail artisan migrate
+```
+7. Build ReactJS with InertiaJS:
+```
+./vendor/bin/sail exec -it laravel.test npm install
+./vendor/bin/sail exec -it laravel.test npm run dev
 ```
