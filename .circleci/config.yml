@@ -1,0 +1,54 @@
+# CircleCI configuration file
+
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      # Specify the version you desire here
+      - image: circleci/php:8.3-browsers
+      - image: circleci/mysql:8
+        environment:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_USER: sail
+          MYSQL_ROOT_PASSWORD: 123456789
+          MYSQL_DATABASE: crm_tool
+
+    working_directory: ~/laravel
+
+    steps:
+      - checkout
+      - run:
+          name: Install PHP exts
+          command: |
+            sudo docker-php-ext-install zip
+            sudo docker-php-ext-install pdo_mysql
+            sudo apt install -y mysql-client
+      - run: sudo composer self-update
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "composer.json" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run: composer install -n --prefer-dist
+
+      - save_cache:
+          paths:
+            - ./vendor
+          key: v1-dependencies-{{ checksum "composer.json" }}
+
+      - run:
+          name: Setup Laravel stuffs
+          command: |
+            php artisan migrate --force
+      - run: ./vendor/bin/phpunit
+    executor:
+
+workflows:
+  version: 2
+  notify_deploy:
+    jobs:
+      - build
