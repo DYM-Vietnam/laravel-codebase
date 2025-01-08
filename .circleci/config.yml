@@ -1,54 +1,61 @@
-# CircleCI configuration file
-
 version: 2.1
 
-jobs:
-  build:
+executors:
+  php_executor:
     docker:
-      # Specify the version you desire here
-      - image: circleci/php:8.3-browsers
-      - image: circleci/mysql:8
+      - image: circleci/php:8.4-node-browsers
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: yes
-          MYSQL_USER: sail
-          MYSQL_ROOT_PASSWORD: 123456789
-          MYSQL_DATABASE: crm_tool
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+          DB_CONNECTION: mysql
+          DB_DATABASE: laravel
+          DB_USERNAME: root
+          DB_PASSWORD: root
+      - image: circleci/mysql:8.0
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: laravel
 
-    working_directory: ~/laravel
-
+jobs:
+  prepare:
+    executor: php_executor
     steps:
       - checkout
       - run:
-          name: Install PHP exts
-          command: |
-            sudo docker-php-ext-install zip
-            sudo docker-php-ext-install pdo_mysql
-            sudo apt install -y mysql-client
-      - run: sudo composer self-update
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "composer.json" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run: composer install -n --prefer-dist
-
-      - save_cache:
-          paths:
-            - ./vendor
-          key: v1-dependencies-{{ checksum "composer.json" }}
-
+          name: Install System Dependencies
+          command: sudo apt-get update && sudo apt-get install -y unzip
       - run:
-          name: Setup Laravel stuffs
-          command: |
-            php artisan migrate --force
-      - run: ./vendor/bin/phpunit
-    executor:
+          name: Install Composer Dependencies
+          command: composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
+      - run:
+          name: Set Up Laravel Environment
+          command: cp .env.example .env
+      - run:
+          name: Generate Application Key
+          command: php artisan key:generate
+      - run:
+          name: Cache Configurations
+          command: php artisan config:cache
+
+  test:
+    executor: php_executor
+    steps:
+      - checkout
+      - run:
+          name: Install Dependencies
+          command: composer install --no-interaction --prefer-dist
+      - run:
+          name: Run Database Migrations
+          command: php artisan migrate --force
+      - run:
+          name: Run Tests
+          command: php artisan test --no-interaction
 
 workflows:
   version: 2
-  notify_deploy:
+  laravel-workflow:
     jobs:
-      - build
+      - prepare
+      - test:
+          requires:
+            - prepare
