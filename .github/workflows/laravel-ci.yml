@@ -48,11 +48,11 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Run Test suite
-        run: php artisan test
-
       - name: Install NPM dependencies
         run: npm install
 
       - name: Compile assets
         run: npm run build
+
+      - name: Run Test suite
+        run: php artisan test
